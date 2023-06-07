@@ -18,6 +18,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MeditationTimerTheme {
                 // A surface container using the 'background' color from the theme
+                // test
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
