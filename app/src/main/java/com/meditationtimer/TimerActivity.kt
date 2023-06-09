@@ -37,22 +37,6 @@ class TimerActivity : AppCompatActivity() {
         resetBtn.setOnClickListener {
             resetTime()
         }
-
-        val addTimeTv: TextView = findViewById(R.id.tv_addTime)
-        addTimeTv.setOnClickListener {
-            addExtraTime()
-        }
-    }
-
-    private fun addExtraTime() {
-        val progressBar: ProgressBar = findViewById(R.id.pbTimer)
-        if (timeSelected != 0L) {
-            timeSelected += 15
-            progressBar.max = timeSelected.toInt()
-            timePause()
-            startTimer(pauseOffset)
-            Toast.makeText(this, "15 seconds added", Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun resetTime() {
@@ -68,7 +52,8 @@ class TimerActivity : AppCompatActivity() {
             val progressBar = findViewById<ProgressBar>(R.id.pbTimer)
             progressBar.progress = 0
             val timeLeftTv: TextView = findViewById(R.id.tvTimeLeft)
-            timeLeftTv.text = "0"
+            timeLeftTv.text = "0:00"
+            Toast.makeText(this, "Timer set to default", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -91,7 +76,7 @@ class TimerActivity : AppCompatActivity() {
                 timePause()
             }
         } else {
-            Toast.makeText(this, "Enter Time", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Please set timer", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -105,8 +90,13 @@ class TimerActivity : AppCompatActivity() {
                 timeProgress++
                 pauseOffset = timeSelected - p0 / 1000
                 progressBar.progress = (timeSelected - timeProgress).toInt()
+
+                // Calculate minutes and seconds
+                val minutes = (timeSelected - timeProgress) / 60
+                val seconds = (timeSelected - timeProgress) % 60
+
                 val timeLeftTv: TextView = findViewById(R.id.tvTimeLeft)
-                timeLeftTv.text = (timeSelected - timeProgress).toString()
+                timeLeftTv.text = String.format("%02d:%02d", minutes, seconds)
             }
 
             override fun onFinish() {
@@ -119,30 +109,31 @@ class TimerActivity : AppCompatActivity() {
     private fun setTimeFunction() {
         val timeDialog = Dialog(this)
         timeDialog.setContentView(R.layout.add_dialog)
-        val timeSet = timeDialog.findViewById<EditText>(R.id.etGetTime)
+        val etMinutes = timeDialog.findViewById<EditText>(R.id.etMinutes)
+        val etSeconds = timeDialog.findViewById<EditText>(R.id.etSeconds)
         val timeLeftTv: TextView = findViewById(R.id.tvTimeLeft)
         val btnStart: Button = findViewById(R.id.btnPlayPause)
         val progressBar = findViewById<ProgressBar>(R.id.pbTimer)
         timeDialog.findViewById<Button>(R.id.btnOk).setOnClickListener {
-            if (timeSet.text.isEmpty()) {
-                Toast.makeText(this, "Enter Time Duration", Toast.LENGTH_SHORT).show()
-            } else {
+            val minutesText = etMinutes.text.toString()
+            val secondsText = etSeconds.text.toString()
+
+            val minutes = if (minutesText.isNotEmpty()) minutesText.toInt() else 0
+            val seconds = if (secondsText.isNotEmpty()) secondsText.toInt() else 0
+            val totalTime = minutes * 60 + seconds
+
+            if (totalTime > 0) {
                 resetTime()
-                timeLeftTv.text = timeSet.text
+                timeLeftTv.text = String.format("%02d:%02d", minutes, seconds)
                 btnStart.text = "Start"
-                timeSelected = timeSet.text.toString().toLong()
-                progressBar.max = timeSelected.toInt()
+                timeSelected = totalTime.toLong()
+                progressBar.max = totalTime
+            } else {
+                Toast.makeText(this, "Please enter time duration", Toast.LENGTH_SHORT).show()
             }
+
             timeDialog.dismiss()
         }
         timeDialog.show()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        if (timeCountDown != null) {
-            timeCountDown?.cancel()
-            timeProgress = 0
-        }
     }
 }
