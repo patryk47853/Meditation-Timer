@@ -1,8 +1,13 @@
 package com.meditationtimer
 
 import android.app.Dialog
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.provider.Settings
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
@@ -10,6 +15,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatButton
 
 class TimerActivity : AppCompatActivity() {
 
@@ -18,12 +24,19 @@ class TimerActivity : AppCompatActivity() {
     private var timeProgress = 0L
     private var pauseOffset: Long = 0
     private var isStart = true
+    private var isDarkMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setTheme(if (isDarkMode) R.style.AppTheme_Dark else R.style.AppTheme)
         setContentView(R.layout.timer_activity)
 
-        val addBtn: ImageButton = findViewById(R.id.btnAdd)
+        val doNotDisturbButton: Button = findViewById(R.id.btnDoNotDisturb)
+        doNotDisturbButton.setOnClickListener {
+            toggleDoNotDisturbMode()
+        }
+
+        val addBtn: AppCompatButton = findViewById(R.id.btnAdd)
         addBtn.setOnClickListener {
             setTimeFunction()
         }
@@ -36,6 +49,13 @@ class TimerActivity : AppCompatActivity() {
         val resetBtn: ImageButton = findViewById(R.id.ib_reset)
         resetBtn.setOnClickListener {
             resetTime()
+        }
+
+        val modeButton: AppCompatButton = findViewById(R.id.btnMode)
+        modeButton.text = if (isDarkMode) "Light Mode" else "Dark Mode"
+        modeButton.setOnClickListener {
+            isDarkMode = !isDarkMode
+            recreate()
         }
     }
 
@@ -52,7 +72,7 @@ class TimerActivity : AppCompatActivity() {
             val progressBar = findViewById<ProgressBar>(R.id.pbTimer)
             progressBar.progress = 0
             val timeLeftTv: TextView = findViewById(R.id.tvTimeLeft)
-            timeLeftTv.text = "0:00"
+            timeLeftTv.text = "00:00"
             Toast.makeText(this, "Timer set to default", Toast.LENGTH_SHORT).show()
         }
     }
@@ -136,4 +156,41 @@ class TimerActivity : AppCompatActivity() {
         }
         timeDialog.show()
     }
+
+    private fun toggleDoNotDisturbMode() {
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (notificationManager.isNotificationPolicyAccessGranted) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val policy =
+                    NotificationManager.Policy(
+                        NotificationManager.Policy.PRIORITY_CATEGORY_ALARMS,
+                        0,
+                        NotificationManager.Policy.SUPPRESSED_EFFECT_AMBIENT,
+                    )
+                notificationManager.notificationPolicy = policy
+            }
+
+            val doNotDisturbButton: Button = findViewById(R.id.btnDoNotDisturb)
+            val isDoNotDisturbEnabled = notificationManager.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE
+
+            if (isDoNotDisturbEnabled) {
+                // Do Not Disturb is enabled, so disable it
+                notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+                doNotDisturbButton.text = "Do Not Disturb"
+            } else {
+                // Do Not Disturb is disabled, so enable it
+                notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+                doNotDisturbButton.text = "Disable Do Not Disturb"
+            }
+        } else {
+            // Request permission to access notification policy
+            val intent = Intent(
+                Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS
+            )
+            startActivity(intent)
+        }
+    }
+
 }
