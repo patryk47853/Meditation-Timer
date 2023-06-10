@@ -4,7 +4,6 @@ import android.app.Dialog
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.provider.Settings
@@ -16,7 +15,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
-
 class TimerActivity : AppCompatActivity() {
 
     private var timeSelected: Long = 0
@@ -24,11 +22,9 @@ class TimerActivity : AppCompatActivity() {
     private var timeProgress = 0L
     private var pauseOffset: Long = 0
     private var isStart = true
-    private var isDarkMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setTheme(if (isDarkMode) R.style.AppTheme_Dark else R.style.AppTheme)
         setContentView(R.layout.timer_activity)
 
         val doNotDisturbButton: Button = findViewById(R.id.btnDoNotDisturb)
@@ -49,13 +45,6 @@ class TimerActivity : AppCompatActivity() {
         val resetBtn: ImageButton = findViewById(R.id.ib_reset)
         resetBtn.setOnClickListener {
             resetTime()
-        }
-
-        val modeButton: AppCompatButton = findViewById(R.id.btnMode)
-        modeButton.text = if (isDarkMode) "Light Mode" else "Dark Mode"
-        modeButton.setOnClickListener {
-            isDarkMode = !isDarkMode
-            recreate()
         }
     }
 
@@ -129,14 +118,14 @@ class TimerActivity : AppCompatActivity() {
     private fun setTimeFunction() {
         val timeDialog = Dialog(this)
         timeDialog.setContentView(R.layout.add_dialog)
-        val etMinutes = timeDialog.findViewById<EditText>(R.id.etMinutes)
-        val etSeconds = timeDialog.findViewById<EditText>(R.id.etSeconds)
+        val setMinutes = timeDialog.findViewById<EditText>(R.id.setMinutes)
+        val setSeconds = timeDialog.findViewById<EditText>(R.id.setSeconds)
         val timeLeftTv: TextView = findViewById(R.id.tvTimeLeft)
         val btnStart: Button = findViewById(R.id.btnPlayPause)
         val progressBar = findViewById<ProgressBar>(R.id.pbTimer)
         timeDialog.findViewById<Button>(R.id.btnOk).setOnClickListener {
-            val minutesText = etMinutes.text.toString()
-            val secondsText = etSeconds.text.toString()
+            val minutesText = setMinutes.text.toString()
+            val secondsText = setSeconds.text.toString()
 
             val minutes = if (minutesText.isNotEmpty()) minutesText.toInt() else 0
             val seconds = if (secondsText.isNotEmpty()) secondsText.toInt() else 0
@@ -158,39 +147,51 @@ class TimerActivity : AppCompatActivity() {
     }
 
     private fun toggleDoNotDisturbMode() {
-        val notificationManager =
-            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        if (notificationManager.isNotificationPolicyAccessGranted) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val policy =
-                    NotificationManager.Policy(
-                        NotificationManager.Policy.PRIORITY_CATEGORY_ALARMS,
-                        0,
-                        NotificationManager.Policy.SUPPRESSED_EFFECT_AMBIENT,
-                    )
-                notificationManager.notificationPolicy = policy
-            }
-
-            val doNotDisturbButton: Button = findViewById(R.id.btnDoNotDisturb)
-            val isDoNotDisturbEnabled = notificationManager.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE
+        if (isNotificationPolicyAccessGranted()) {
+            val isDoNotDisturbEnabled =
+                notificationManager.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE
 
             if (isDoNotDisturbEnabled) {
-                // Do Not Disturb is enabled, so disable it
-                notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
-                doNotDisturbButton.text = "Do Not Disturb"
+                disableDoNotDisturbMode(notificationManager)
             } else {
-                // Do Not Disturb is disabled, so enable it
-                notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
-                doNotDisturbButton.text = "Disable Do Not Disturb"
+                enableDoNotDisturbMode(notificationManager)
             }
         } else {
-            // Request permission to access notification policy
-            val intent = Intent(
-                Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS
-            )
-            startActivity(intent)
+            requestNotificationPolicyAccess()
         }
     }
+
+    private fun isNotificationPolicyAccessGranted(): Boolean {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        return notificationManager.isNotificationPolicyAccessGranted
+    }
+
+    private fun enableDoNotDisturbMode(notificationManager: NotificationManager) {
+        val policy = NotificationManager.Policy(
+            NotificationManager.Policy.PRIORITY_CATEGORY_ALARMS,
+            0,
+            NotificationManager.Policy.SUPPRESSED_EFFECT_AMBIENT
+        )
+        notificationManager.notificationPolicy = policy
+        notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+
+        val doNotDisturbButton: Button = findViewById(R.id.btnDoNotDisturb)
+        doNotDisturbButton.text = "Disable Do Not Disturb"
+    }
+
+    private fun disableDoNotDisturbMode(notificationManager: NotificationManager) {
+        notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+
+        val doNotDisturbButton: Button = findViewById(R.id.btnDoNotDisturb)
+        doNotDisturbButton.text = "Do Not Disturb"
+    }
+
+    private fun requestNotificationPolicyAccess() {
+        val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+        startActivity(intent)
+    }
+
 
 }
